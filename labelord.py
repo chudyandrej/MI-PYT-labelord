@@ -37,7 +37,6 @@ def process_config_file(config_file):
     curent_token = config['github']['token']
 
     if "others" in config:
-        print("repo")
         labels = get_labels(config['others']['template-repo'])
     elif "labels" in config:
         for key in config['labels']:
@@ -48,7 +47,7 @@ def process_config_file(config_file):
 
 @click.option('-t', '--token', default=lambda: os.environ.get('GITHUB_TOKEN', ''),
               help="Your token for comunication with github API")
-@click.option('-c', '--config', type=click.File('r'), help="Path to load config file use INI format")
+@click.option('-c', '--config', default='config.cfg', type=click.File('r'), help="Path to load config file use INI format")
 @click.option('-r', '--template-repo', default='', help="Define template repository name")
 @click.option('-a', '--all-repos', is_flag=True)
 @click.group()
@@ -89,6 +88,7 @@ def cli(token, config, template_repo, all_repos):
 
 @click.command()
 def list_repos():
+
     repos = get_all_repos()
     for repo in repos:
         print(repo)
@@ -185,8 +185,12 @@ def get_all_repos():
     session.headers = {'User-Agent': 'Python'}
     session.auth = token_auth
     r = session.get('https://api.github.com/user/repos')
-    for repo in r.json():
-        repos.append(repo['full_name'])
+    if 200 <= r.status_code <= 299:
+        data = json.loads(r.text)
+        for repo in data:
+            repos.append(str(repo['full_name']))
+    else:
+        print("[LBL][ERR] " + str(r.status_code) + " -" + r.json()['message'])
 
     return repos
 
